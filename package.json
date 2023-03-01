@@ -2,10 +2,11 @@
   "name": "potter-api",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/app.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc && node dist/index.js"
+    "start": "tsc && node dist/index.js",
+    "server": "tsc && node dist/index.js"
   },
   "keywords": [],
   "author": "",

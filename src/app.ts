@@ -17,10 +17,10 @@ export default class Api {
 
 
     router(): express.Router {
-
         const router = express.Router();
-
+        console.log('starting router');
         router.get('/', (req: Request, res: Response) => {
+            console.log('hello world');
             res.send('Hello World!');
         });
         return router;
@@ -28,6 +28,7 @@ export default class Api {
 
 
     start(): void {
+        console.log('starting server');
         const app = express();
         app.use(bodyParser.json(), bodyParser.urlencoded({ extended: false }))
         app.use(cors());
@@ -37,6 +38,7 @@ export default class Api {
 
         let PORT: number | string = process.env.PORT;
         if (PORT == null || PORT == "") {
+            console.log('port is null');
             PORT = this.port;
         }
         app.listen(this.port, () => {
