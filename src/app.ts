@@ -6,7 +6,6 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import cookieParser from "cookie-parser";
 import { constants } from './constants';
-import users from './models/user';
 
 
 export default class Api {
