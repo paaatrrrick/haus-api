@@ -11,7 +11,6 @@ async function isLoggedIn(req: Request, res: ResponseWithUserId, next: NextFunct
 
     //check if req.headers
     let token: string | string[] = req.headers[constants.authHeader];
-    //check if token is an array; if so, get the first element
     if (Array.isArray(token)) {
         token = token[0];
     }
@@ -42,3 +41,7 @@ async function isLoggedIn(req: Request, res: ResponseWithUserId, next: NextFunct
     next();
     // res.redirect('/login');
 }
+
+
+
+export { isLoggedIn };
