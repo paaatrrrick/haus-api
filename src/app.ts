@@ -40,7 +40,7 @@ export default class Api {
             PORT = this.port;
         }
         app.listen(this.port, () => {
-            return console.log(`✅ We're live at ${this.port}`);
+            return console.log(`✅ We're live: ${this.port}`);
         });
     }
 
