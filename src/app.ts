@@ -1,4 +1,7 @@
-import express, { Request, NextFunction } from 'express';
+if (process.env.NODE_ENV !== "production") {
+    require('dotenv').config();
+}
+import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import bodyParser from 'body-parser';
@@ -17,7 +20,7 @@ export default class Api {
 
         const router = express.Router();
 
-        router.get('/', (req, res) => {
+        router.get('/', (req: Request, res: Response) => {
             res.send('Hello World!');
         });
         return router;
@@ -30,8 +33,14 @@ export default class Api {
         app.use(cors());
         app.use(cookieParser());
         app.use(this.router());
+
+
+        let PORT: number | string = process.env.PORT;
+        if (PORT == null || PORT == "") {
+            PORT = this.port;
+        }
         app.listen(this.port, () => {
-            return console.log(`✅ We're live at http://localhost:${this.port}`);
+            return console.log(`✅ We're live at ${this.port}`);
         });
     }
 
