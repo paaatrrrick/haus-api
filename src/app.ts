@@ -18,7 +18,6 @@ export default class Api {
 
     router(): express.Router {
         const router = express.Router();
-        console.log('starting router');
         router.get('/', (req: Request, res: Response) => {
             console.log('hello world');
             res.send('Hello World!');
@@ -41,8 +40,8 @@ export default class Api {
             console.log('port is null');
             PORT = this.port;
         }
-        app.listen(this.port, () => {
-            return console.log(`✅ We're live: ${this.port}`);
+        app.listen(PORT, () => {
+            return console.log(`✅ We're live: ${PORT}`);
         });
     }
 
