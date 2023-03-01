@@ -2,11 +2,11 @@ if (process.env.NODE_ENV !== "production") {
     require('dotenv').config();
 }
 import express, { Request, Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import cookieParser from "cookie-parser";
-import multer from 'multer';
+import { constants } from './constants';
+import users from './models/user';
 
 
 export default class Api {
@@ -16,28 +16,44 @@ export default class Api {
     }
 
 
-    router(): express.Router {
-        const router = express.Router();
-        router.get('/', (req: Request, res: Response) => {
-            console.log('hello world');
-            res.send('Hello World!');
+    userRoutes(): express.Router {
+        const userRouter = express.Router();
+        userRouter.get('/', (req: Request, res: Response) => {
+            res.send('Welcome to the home of Claribase, we are currently working to get up and running. For any questions please contact patrick.123.foster@gmail.com');
         });
-        return router;
+        return userRouter;
+    }
+
+    githubRoutes(): express.Router {
+        const githubRouter = express.Router();
+        githubRouter.post('/callback', (req: Request, res: Response) => {
+            console.log('we are at the callback funciton');
+            console.log(req.body);
+            res.status(200).send({})
+
+        });
+        githubRouter.post('/webhook', (req: Request, res: Response) => {
+            console.log('we are at the webhook function');
+            console.log(req.body);
+            res.status(200).send({})
+
+        });
+        return githubRouter
     }
 
 
     start(): void {
-        console.log('starting server');
         const app = express();
         app.use(bodyParser.json(), bodyParser.urlencoded({ extended: false }))
         app.use(cors());
         app.use(cookieParser());
-        app.use(this.router());
+        app.use(`${constants.baseApiUrl}/user`, this.userRoutes());
+        app.use(`${constants.baseApiUrl}/github`, this.githubRoutes());
+
 
 
         let PORT: number | string = process.env.PORT;
         if (PORT == null || PORT == "") {
-            console.log('port is null');
             PORT = this.port;
         }
         app.listen(PORT, () => {
