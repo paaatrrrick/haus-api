@@ -7,7 +7,7 @@ import { constants } from './constants';
 
 
 async function main() {
-    const api = new Api(constants.port);
+    const api = new Api(constants.port, process.env.DB_URL);
     api.start();
 }
 
