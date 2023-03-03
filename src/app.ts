@@ -54,14 +54,17 @@ export default class Api {
     githubRoutes(): express.Router {
         const githubRouter = express.Router();
         githubRouter.post('/callback', (req: Request, res: Response) => {
-            console.log('we are at the callback funciton');
+            console.log('we are at the callback funciton')
+            //log the current date and time in CST 
             console.log(req.body);
             res.status(200).send({})
 
         });
         githubRouter.post('/webhook', (req: Request, res: Response) => {
             console.log('we are at the webhook function');
-            console.log(req.body);
+            console.log(new Date().toLocaleString("en-US", { timeZone: "America/Chicago" }));
+            console.log(JSON.stringify(req.body, null, 2));
+            console.log('END OF THE CALLLBBACK FUNCTION');
             res.status(200).send({})
 
         });
