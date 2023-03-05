@@ -48,6 +48,68 @@ export default class Api {
             const token = jwt.sign({ _id: uid, }, process.env.JWT_PRIVATE_KEY, { expiresIn: "1000d" });
             res.status(200).send({ token: token, message: 'Login successful' });
         }));
+
+        authRouter.post('/github', catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+            const { client_id, client_secret, code, redirect_uri } = req.body;
+            const params = "?client_id=" + client_id + "&client_secret=" + client_secret + "&code=" + code
+             await fetch('https://github.com/login/oauth/access_token' + params, {
+                 method: 'POST',
+                 headers: {
+                    'Accept': 'application/json'
+                },
+            }).then((response) => {
+                return response.json();
+            }).then((data) => {
+                const accessToken = data.access_token;
+                fetch('https://api.github.com/user', {
+                headers: {
+                    'Authorization': `token ${accessToken}`
+                }
+                })
+                .then(response => {
+                    return response.json()
+                })
+                .then((data) => {
+                    const userId = data.login;
+                    // console.log("userId: " + userId, "access token: " + accessToken)
+                    fetch('https://api.github.com/users/' + userId + "/repos", {
+                        headers: {
+                            'Authorization': `token ${accessToken}`
+                        }
+                    })
+                    .then(response => {
+                        return response.json()
+                    }).then((data) => {
+                        const repoName = data[1]?.name;
+                        console.log(data);
+                        console.log(repoName);
+                        fetch('https://api.github.com/repos/' + userId + "/" + repoName + "/contents", {
+                            headers: {
+                                'Authorization': `token ${accessToken}`
+                            }
+                        }).then(response => {
+                            return response.json()
+                        }).then((data) => {
+                            console.log("NEW DATA: ", data);
+                        })
+        
+                        
+                    })
+                })
+                // .catch(error => console.error(error));
+                // res.json(data);
+            })
+            // .then(response => (response.json()))
+            // .then(data => {
+            //     console.log("this is data: ", data);
+            //     const accessToken = data.access_token;
+            //     console.log("THIS IS OUR TOKEN: " + accessToken);
+            //  })
+            // .catch(error => console.error(error));
+
+            // res.status(200).send({ token: token, message: 'Login successful' });
+        }));
+
         return authRouter;
     }
 
