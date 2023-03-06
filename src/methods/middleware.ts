@@ -2,13 +2,14 @@ if (process.env.NODE_ENV !== "production") {
     require('dotenv').config();
 }
 import { Request, NextFunction } from 'express';
-import { ResponseWithUserId } from '../types/apiTypes';
+import { ResponseWithUser } from '../types/apiTypes';
+import { User } from '../types/models';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { constants } from '../constants';
 import users from '../models/user';
 
 
-async function isLoggedIn(req: Request, res: ResponseWithUserId, next: NextFunction) {
+async function isLoggedIn(req: Request, res: ResponseWithUser, next: NextFunction) {
     //check if req.headers
     let token: string | string[] = req.headers[constants.authHeader];
     if (Array.isArray(token)) {
@@ -22,11 +23,12 @@ async function isLoggedIn(req: Request, res: ResponseWithUserId, next: NextFunct
             //@ts-ignore
             let decoded: JwtPayload = jwt.verify(token, process.env.JWT_PRIVATE_KEY);
 
-            const user = users.findById(decoded._id);
+            const user: User = await users.findById(decoded._id);
             if (!user) {
                 return res.status(401).send(JSON.stringify("no user found"));
             }
             res.userId = decoded._id;
+            res.user = user;
         } catch (e) {
             return res.status(500).send(JSON.stringify("no user found"));
         }

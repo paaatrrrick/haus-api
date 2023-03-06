@@ -6,12 +6,18 @@ import express, { Request, Response, NextFunction, ErrorRequestHandler } from 'e
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import jwt from 'jsonwebtoken';
+import { RequestInfo, RequestInit } from "node-fetch";
+const fetch = (url: RequestInfo, init?: RequestInit) => import("node-fetch").then(({ default: fetch }) => fetch(url, init));
 import cookieParser from "cookie-parser";
 import mongoose from 'mongoose';
 import { constants } from './constants';
 import { isLoggedIn } from './methods/middleware';
+import { createSummariesForRepo } from './methods/openai';
 import users from './models/user';
+import repos from './models/repo';
+import files from './models/file';
 import { randomStringToHash24Bits } from './methods/helpers';
+import { ResponseWithUser } from './types/apiTypes';
 
 
 export default class Api {
@@ -33,6 +39,15 @@ export default class Api {
 
     authRoutes(): express.Router {
         const authRouter = express.Router();
+
+        if (process.env.NODE_ENV !== "production") {
+            authRouter.get('/wipe', async () => {
+                await users.deleteMany({});
+                await repos.deleteMany({});
+                await files.deleteMany({});
+                console.log('deleted everything');
+            })
+        }
         authRouter.get('/isLoggedIn', isLoggedIn, catchAsync(async (req: Request, res: Response, next: NextFunction) => {
             res.status(200).send({ message: 'user authenticated' });
         }));
@@ -49,66 +64,7 @@ export default class Api {
             res.status(200).send({ token: token, message: 'Login successful' });
         }));
 
-        authRouter.post('/github', catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-            const { client_id, client_secret, code, redirect_uri } = req.body;
-            const params = "?client_id=" + client_id + "&client_secret=" + client_secret + "&code=" + code
-             await fetch('https://github.com/login/oauth/access_token' + params, {
-                 method: 'POST',
-                 headers: {
-                    'Accept': 'application/json'
-                },
-            }).then((response) => {
-                return response.json();
-            }).then((data) => {
-                const accessToken = data.access_token;
-                fetch('https://api.github.com/user', {
-                headers: {
-                    'Authorization': `token ${accessToken}`
-                }
-                })
-                .then(response => {
-                    return response.json()
-                })
-                .then((data) => {
-                    const userId = data.login;
-                    // console.log("userId: " + userId, "access token: " + accessToken)
-                    fetch('https://api.github.com/users/' + userId + "/repos", {
-                        headers: {
-                            'Authorization': `token ${accessToken}`
-                        }
-                    })
-                    .then(response => {
-                        return response.json()
-                    }).then((data) => {
-                        const repoName = data[1]?.name;
-                        console.log(data);
-                        console.log(repoName);
-                        fetch('https://api.github.com/repos/' + userId + "/" + repoName + "/contents", {
-                            headers: {
-                                'Authorization': `token ${accessToken}`
-                            }
-                        }).then(response => {
-                            return response.json()
-                        }).then((data) => {
-                            console.log("NEW DATA: ", data);
-                        })
-        
-                        
-                    })
-                })
-                // .catch(error => console.error(error));
-                // res.json(data);
-            })
-            // .then(response => (response.json()))
-            // .then(data => {
-            //     console.log("this is data: ", data);
-            //     const accessToken = data.access_token;
-            //     console.log("THIS IS OUR TOKEN: " + accessToken);
-            //  })
-            // .catch(error => console.error(error));
 
-            // res.status(200).send({ token: token, message: 'Login successful' });
-        }));
 
         return authRouter;
     }
@@ -126,10 +82,85 @@ export default class Api {
             console.log('we are at the webhook function');
             console.log(new Date().toLocaleString("en-US", { timeZone: "America/Chicago" }));
             console.log(JSON.stringify(req.body, null, 2));
-            console.log('END OF THE CALLLBBACK FUNCTION');
+            console.log('END OF THE webhook FUNCTION');
             res.status(200).send({})
 
         });
+
+        githubRouter.post('/connect', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
+            const { code } = req.body;
+            const params = "?client_id=" + constants.client_id + "&client_secret=" + constants.client_secret + "&code=" + code;
+            //takes the code and gets the access token
+            const responseForToken = await fetch('https://github.com/login/oauth/access_token' + params, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                },
+            })
+            const dataForToken = await responseForToken.json();
+            const accessToken = dataForToken.access_token;
+            if (accessToken) {
+
+                //takes the access token and gets the user id. The return also includes all of the users baseline information
+                const responseForUserId = await fetch('https://api.github.com/user', {
+                    headers: {
+                        'Authorization': `token ${accessToken}`
+                    }
+                })
+                const dataForUserId = await responseForUserId.json();
+                if (dataForUserId.login) {
+                    console.log('Successfully got the users name with the access token: ' + accessToken);
+                    //@ts-ignore
+                    const userId = dataForUserId.login;
+
+                    await users.findByIdAndUpdate(res.userId, { githubId: userId, accessToken: accessToken });
+
+                    //takes the user id and gets their repos
+                    const responseRepos = await fetch('https://api.github.com/users/' + userId + "/repos");
+
+                    // const repoName = dataRepos[1]?.name;
+                    const dataRepos = await responseRepos.json();
+                    const names: string[] = dataRepos.map((repo: any) => repo.name);
+                    return res.status(200).send({ names: names });
+                }
+            }
+
+            res.status(403).send({ message: 'poor authentications' });
+        }));
+
+        githubRouter.get('/repo/:repoName', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
+            const { repoName } = req.params;
+            const user = res.user;
+            var repoAlreadyExists: boolean = false;
+            var repoId: string = '';
+            for (let repo of user.repositories) {
+                if (repo.name === repoName) {
+                    repoAlreadyExists = true;
+                    repoId = repo.id;
+                    break;
+                }
+            }
+            if (!repoAlreadyExists) {
+                console.log('first if statement');
+                console.log(repoName);
+                console.log(res.userId);
+                const newRepo = new repos({ name: repoName, userId: res.userId });
+                await users.findByIdAndUpdate(res.userId, { $push: { repositories: { name: repoName, id: newRepo.id } } });
+                await newRepo.save();
+                console.log(newRepo);
+                const files = await createSummariesForRepo(newRepo.id, user.githubId, repoName);
+                return res.status(200).send({ files: files });
+                // await newRepo.save();
+                // repoId = newRepo.id;
+                // await users.findByIdAndUpdate(res.userId, { $push: { repositories: { name: repoName, id: repoId } } });
+            } else {
+                console.log('second if statement');
+                const repoInfo = await repos.findById(repoId);
+                return res.status(200).send({ files: repoInfo.files });
+            }
+        }));
+
+
         return githubRouter
     }
 
