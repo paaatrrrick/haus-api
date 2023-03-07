@@ -8,7 +8,11 @@ const RepoSchema = new Schema<Repo>({
     name: { type: String, required: true },
     files: {
         type: Map,
-        of: String,
+        of: {
+            name: { type: String, required: true },
+            path: { type: String, required: true },
+            type: { type: String, required: true },
+        },
         default: {},
     }
 });

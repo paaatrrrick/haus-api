@@ -34,6 +34,24 @@ export default class Api {
         userRouter.get('/', (req: Request, res: Response) => {
             res.send('Welcome to the home of Claribase, we are currently working to get up and running. For any questions please contact patrick.123.foster@gmail.com');
         });
+
+        //create a route that takes a file id and returns the contentURL of the file and the summary
+
+        userRouter.get('/file/:fileId', isLoggedIn, catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+            console.log('we are here')!
+            const { fileId } = req.params;
+            console.log(fileId);
+            const file = await files.findById(fileId);
+            console.log(file)
+            if (!file) {
+                return res.status(404).send({ message: 'file not found' });
+            } else {
+                const contentResponse = await fetch(file.contentUrl);
+                const content = await contentResponse.text();
+                console.log(content);
+                return res.status(200).send({ content: content, summary: file.summary });
+            }
+        }));
         return userRouter;
     }
 
@@ -90,6 +108,7 @@ export default class Api {
         githubRouter.post('/connect', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             const { code } = req.body;
             const params = "?client_id=" + constants.client_id + "&client_secret=" + constants.client_secret + "&code=" + code;
+
             //takes the code and gets the access token
             const responseForToken = await fetch('https://github.com/login/oauth/access_token' + params, {
                 method: 'POST',
@@ -100,7 +119,6 @@ export default class Api {
             const dataForToken = await responseForToken.json();
             const accessToken = dataForToken.access_token;
             if (accessToken) {
-
                 //takes the access token and gets the user id. The return also includes all of the users baseline information
                 const responseForUserId = await fetch('https://api.github.com/user', {
                     headers: {
@@ -116,9 +134,9 @@ export default class Api {
                     await users.findByIdAndUpdate(res.userId, { githubId: userId, accessToken: accessToken });
 
                     //takes the user id and gets their repos
+                    console.log('asdfsdfsd')
                     const responseRepos = await fetch('https://api.github.com/users/' + userId + "/repos");
 
-                    // const repoName = dataRepos[1]?.name;
                     const dataRepos = await responseRepos.json();
                     const names: string[] = dataRepos.map((repo: any) => repo.name);
                     return res.status(200).send({ names: names });
@@ -126,6 +144,13 @@ export default class Api {
             }
 
             res.status(403).send({ message: 'poor authentications' });
+        }));
+
+        githubRouter.get('/refreshrepo/:repoName', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
+            const { repoName } = req.params;
+            const user = res.user;
+            const files = await createSummariesForRepo(user.repositories.find((repo: any) => repo.name === repoName).id, user.githubId, repoName);
+            return res.status(200).send({ files: files });
         }));
 
         githubRouter.get('/repo/:repoName', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
@@ -142,13 +167,12 @@ export default class Api {
             }
             if (!repoAlreadyExists) {
                 console.log('first if statement');
-                console.log(repoName);
-                console.log(res.userId);
                 const newRepo = new repos({ name: repoName, userId: res.userId });
                 await users.findByIdAndUpdate(res.userId, { $push: { repositories: { name: repoName, id: newRepo.id } } });
                 await newRepo.save();
-                console.log(newRepo);
                 const files = await createSummariesForRepo(newRepo.id, user.githubId, repoName);
+                console.log('we have returned from the createSummariesForRepo function');
+                console.log(files);
                 return res.status(200).send({ files: files });
                 // await newRepo.save();
                 // repoId = newRepo.id;

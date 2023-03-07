@@ -13,13 +13,13 @@ export interface User {
     repositories?: usersRepos[],
 }
 
-interface fileNameAndId {
-    name: string,
-    id: string,
-}
 
 export interface fileDictionary {
-    [filePath: string]: fileNameAndId;
+    [filePath: string]: {
+        name: string;
+        path: string;
+        type: string;
+    };
 }
 
 export interface Repo {
