@@ -4,6 +4,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 import { Configuration, OpenAIApi } from "openai";
 import { fileDictionary } from "../types/models";
+import { unsupportedFileTypes } from "../constants";
 import repos from '../models/repo';
 import files from '../models/file';
 const fetch = (url: RequestInfo, init?: RequestInit) => import("node-fetch").then(({ default: fetch }) => fetch(url, init));
@@ -35,7 +36,7 @@ export async function createSummariesForRepo(repoId: string, userGitHub: string,
         const ids: string[] = []
         for (let file of fileData) {
             //check if the first letter is a dot or if the file is node_modules
-            if (file.name !== "node_modules" && file.name.slice(0, 1) !== ".") {
+            if (file.name !== "node_modules" && file.name.slice(0, 1) !== "." && (file.type === 'dir' || !unsupportedFileTypes.has(file.name.split('.').pop().toLowerCase() as string))) {
                 if (file.type === 'dir') {
                     const response = await fetch(file.url);
                     const fileData: fileFromGithub[] = await response.json();
@@ -59,9 +60,6 @@ export async function createSummariesForRepo(repoId: string, userGitHub: string,
         return ids;
     }
     await recursiveFileSearch(dataRepoInfo);
-
-    console.log('we are about done');
-    console.log(globalVariableFiles);
 
     await repos.findByIdAndUpdate(repoId, { $set: { files: globalVariableFiles } });
 

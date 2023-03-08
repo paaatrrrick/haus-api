@@ -8,7 +8,7 @@ export interface User {
     dateCreate: Date,
     name: string,
     profilePicture: string,
-    githubId: string,
+    githubId?: string,
     accessToken?: string,
     repositories?: usersRepos[],
 }

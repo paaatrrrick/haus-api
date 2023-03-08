@@ -37,18 +37,14 @@ export default class Api {
 
         //create a route that takes a file id and returns the contentURL of the file and the summary
 
-        userRouter.get('/file/:fileId', isLoggedIn, catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-            console.log('we are here')!
+        userRouter.get('/file/:fileId', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             const { fileId } = req.params;
-            console.log(fileId);
             const file = await files.findById(fileId);
-            console.log(file)
             if (!file) {
                 return res.status(404).send({ message: 'file not found' });
             } else {
                 const contentResponse = await fetch(file.contentUrl);
                 const content = await contentResponse.text();
-                console.log(content);
                 return res.status(200).send({ content: content, summary: file.summary });
             }
         }));
@@ -66,8 +62,8 @@ export default class Api {
                 console.log('deleted everything');
             })
         }
-        authRouter.get('/isLoggedIn', isLoggedIn, catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-            res.status(200).send({ message: 'user authenticated' });
+        authRouter.get('/isLoggedIn', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
+            res.status(200).send({ user: res.user });
         }));
 
         authRouter.post('/google', catchAsync(async (req: Request, res: Response, next: NextFunction) => {
@@ -127,18 +123,24 @@ export default class Api {
                 })
                 const dataForUserId = await responseForUserId.json();
                 if (dataForUserId.login) {
-                    console.log('Successfully got the users name with the access token: ' + accessToken);
                     //@ts-ignore
                     const userId = dataForUserId.login;
 
-                    await users.findByIdAndUpdate(res.userId, { githubId: userId, accessToken: accessToken });
 
                     //takes the user id and gets their repos
-                    console.log('asdfsdfsd')
                     const responseRepos = await fetch('https://api.github.com/users/' + userId + "/repos");
-
                     const dataRepos = await responseRepos.json();
                     const names: string[] = dataRepos.map((repo: any) => repo.name);
+                    const listOfRepoNamesAndIds: any[] = [];
+                    for (let name of names) {
+                        const newRepo = new repos({ name: name, userId: res.userId });
+                        await newRepo.save();
+                        listOfRepoNamesAndIds.push({ name: newRepo.name, id: newRepo.id });
+                    }
+
+                    const user = await users.findByIdAndUpdate(res.userId, { githubId: userId, accessToken: accessToken, repositories: listOfRepoNamesAndIds });
+                    await user.save();
+
                     return res.status(200).send({ names: names });
                 }
             }
@@ -146,42 +148,35 @@ export default class Api {
             res.status(403).send({ message: 'poor authentications' });
         }));
 
+        //regenerates the summaries for a repo
         githubRouter.get('/refreshrepo/:repoName', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             const { repoName } = req.params;
             const user = res.user;
-            const files = await createSummariesForRepo(user.repositories.find((repo: any) => repo.name === repoName).id, user.githubId, repoName);
-            return res.status(200).send({ files: files });
+            const repoId: string | undefined = user.repositories.find((repo: any) => repo.name === repoName).id;
+            if (repoId) {
+                const files = await createSummariesForRepo(repoId, user.githubId, repoName);
+                return res.status(200).send({ files: files });
+            } else {
+                return res.status(404).send({ message: 'repo not found' });
+            }
         }));
 
+        //gets the files for a repo and if the repo has no files it will create the summaries
         githubRouter.get('/repo/:repoName', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             const { repoName } = req.params;
             const user = res.user;
-            var repoAlreadyExists: boolean = false;
-            var repoId: string = '';
-            for (let repo of user.repositories) {
-                if (repo.name === repoName) {
-                    repoAlreadyExists = true;
-                    repoId = repo.id;
-                    break;
-                }
+            const repoId: string | undefined = user.repositories.find((repo: any) => repo.name === repoName).id;
+            if (!repoId) {
+                return res.status(404).send({ message: 'repo not found' });
             }
-            if (!repoAlreadyExists) {
-                console.log('first if statement');
-                const newRepo = new repos({ name: repoName, userId: res.userId });
-                await users.findByIdAndUpdate(res.userId, { $push: { repositories: { name: repoName, id: newRepo.id } } });
-                await newRepo.save();
-                const files = await createSummariesForRepo(newRepo.id, user.githubId, repoName);
-                console.log('we have returned from the createSummariesForRepo function');
-                console.log(files);
-                return res.status(200).send({ files: files });
-                // await newRepo.save();
-                // repoId = newRepo.id;
-                // await users.findByIdAndUpdate(res.userId, { $push: { repositories: { name: repoName, id: repoId } } });
-            } else {
-                console.log('second if statement');
-                const repoInfo = await repos.findById(repoId);
+            const repoInfo = await repos.findById(repoId);
+            const keys: string[] = Object.keys(repoInfo.files);
+            if (keys.length !== 0 && repoInfo.files[keys[0]].name && repoInfo.files[keys[0]].path) {
                 return res.status(200).send({ files: repoInfo.files });
             }
+            const files = await createSummariesForRepo(repoId, user.githubId, repoName);
+            return res.status(200).send({ files: files });
+
         }));
 
 
@@ -190,8 +185,7 @@ export default class Api {
 
     error(): ErrorRequestHandler {
         return (err: Error, req: Request, res: Response, next: NextFunction) => {
-            console.log('we are in the error function');
-            console.log(err);
+            console.error(err);
             res.status(500).send({ error: err.message });
         }
     }

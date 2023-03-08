@@ -19,3 +19,5 @@ export const firebaseConfig: FirebaseConfigTypes = {
     appId: "1:508656216323:web:ecf24188be5a027517e136",
     measurementId: "G-41DSEPR2T4"
 };
+
+export const unsupportedFileTypes = new Set<string>(['png', 'jpeg', 'jpg', 'gif', 'svg', 'ico', 'bmp', 'tif', 'tiff', 'psd', 'ai', 'eps', 'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'csv', 'json', 'xml', 'txt', 'md', 'rtf', 'odt', 'ods', 'odp', 'mp3', 'wav', 'aac', 'ogg', 'flac', 'mp4', 'mov', 'avi', 'mkv', 'swf', 'zip', 'rar', 'tar', '7z', 'scss', 'less', 'sass', 'csv', 'yml', 'yaml', 'toml', 'ini', 'env', 'lock', 'patch', 'svgz', 'eot', 'ttf', 'woff', 'woff2', 'otf', 'ps', 'eps', 'wmv', 'flv', 'webm', 'm4v', '3gp', 'ai', 'sketch', 'xlsb', 'docm', 'xlsm', 'pptm', 'potx', 'potm', 'ppam', 'ppsx', 'ppsm', 'pub'])
