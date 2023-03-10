@@ -18,6 +18,7 @@ import repos from './models/repo';
 import files from './models/file';
 import { randomStringToHash24Bits } from './methods/helpers';
 import { ResponseWithUser } from './types/apiTypes';
+import { Repo } from './types/models';
 
 
 export default class Api {
@@ -54,14 +55,14 @@ export default class Api {
     authRoutes(): express.Router {
         const authRouter = express.Router();
 
-        if (process.env.NODE_ENV !== "production") {
-            authRouter.get('/wipe', async () => {
-                await users.deleteMany({});
-                await repos.deleteMany({});
-                await files.deleteMany({});
-                console.log('deleted everything');
-            })
-        }
+        // if (process.env.NODE_ENV !== "production") {
+        //     authRouter.get('/wipe', async () => {
+        //         await users.deleteMany({});
+        //         await repos.deleteMany({});
+        //         await files.deleteMany({});
+        //         console.log('deleted everything');
+        //     })
+        // }
         authRouter.get('/isLoggedIn', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             res.status(200).send({ user: res.user });
         }));
@@ -154,8 +155,16 @@ export default class Api {
             const user = res.user;
             const repoId: string | undefined = user.repositories.find((repo: any) => repo.name === repoName).id;
             if (repoId) {
-                const files = await createSummariesForRepo(repoId, user.githubId, repoName);
-                return res.status(200).send({ files: files });
+                //delete all of the files for the repo
+                const currentRepo = await repos.findById(repoId);
+                // @ts-ignore
+                for (let arr of currentRepo.files.entries()) {
+                    const key = arr[0];
+                    await files.findByIdAndDelete(key);
+                }
+
+                const newFiles = await createSummariesForRepo(repoId, user.githubId, repoName);
+                return res.status(200).send({ files: newFiles });
             } else {
                 return res.status(404).send({ message: 'repo not found' });
             }
@@ -170,8 +179,13 @@ export default class Api {
                 return res.status(404).send({ message: 'repo not found' });
             }
             const repoInfo = await repos.findById(repoId);
-            const keys: string[] = Object.keys(repoInfo.files);
-            if (keys.length !== 0 && repoInfo.files[keys[0]].name && repoInfo.files[keys[0]].path) {
+            var hasKeys = false;
+            //@ts-ignore
+            for (let key of repoInfo.files.entries()) {
+                hasKeys = true;
+                break;
+            }
+            if (hasKeys) {
                 return res.status(200).send({ files: repoInfo.files });
             }
             const files = await createSummariesForRepo(repoId, user.githubId, repoName);

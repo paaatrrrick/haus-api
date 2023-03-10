@@ -72,18 +72,18 @@ async function handleOpenAIAPICall(fileText: string): Promise<string> {
     if (process.env.TESTING === "true") {
         return "This is a test summary of the file: " + fileText;
     } else {
-        // try {
-        //     const completion = await openai.createCompletion({
-        //         model: "text-davinci-003",
-        //         prompt: 'give me a summary of this file: ' + fileText,
-        //         temperature: 0.6,
-        //         max_tokens: 100,
-        //     });
-        //     const ouput: string = completion.data.choices[0].text!;
-        //     return ouput;
-        // } catch (error) {
-        //     console.log(error);
-        // }
-        return "ddddd";
+        try {
+            const completion = await openai.createCompletion({
+                model: "text-davinci-003",
+                prompt: 'give me a summary of this file: ' + fileText,
+                temperature: 0.6,
+                max_tokens: 100,
+            });
+            const ouput: string = completion.data.choices[0].text!;
+            return ouput;
+        } catch (error) {
+            console.log(error);
+            return "Oops we had an error creating this summary.";
+        }
     }
 }
