@@ -33,6 +33,7 @@ export default class Api {
     userRoutes(): express.Router {
         const userRouter = express.Router();
         userRouter.get('/', (req: Request, res: Response) => {
+            console.log('yo yo yo yoa')
             res.send('Welcome to the home of Claribase, we are currently working to get up and running. For any questions please contact patrick.123.foster@gmail.com');
         });
 
