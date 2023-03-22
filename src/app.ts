@@ -56,14 +56,14 @@ export default class Api {
     authRoutes(): express.Router {
         const authRouter = express.Router();
 
-        // if (process.env.NODE_ENV !== "production") {
-        //     authRouter.get('/wipe', async () => {
-        //         await users.deleteMany({});
-        //         await repos.deleteMany({});
-        //         await files.deleteMany({});
-        //         console.log('deleted everything');
-        //     })
-        // }
+        if (process.env.NODE_ENV !== "production") {
+            authRouter.get('/wipe', async () => {
+                await users.deleteMany({});
+                await repos.deleteMany({});
+                await files.deleteMany({});
+                console.log('deleted everything');
+            })
+        }
         authRouter.get('/isLoggedIn', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             res.status(200).send({ user: res.user });
         }));
