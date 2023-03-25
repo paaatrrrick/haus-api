@@ -1,40 +1,17 @@
-export interface usersRepos {
-    name: string,
-    id: string,
-}
-
 export interface User {
     email: string,
     dateCreate: Date,
     name: string,
-    profilePicture: string,
-    githubId?: string,
-    accessToken?: string,
-    repositories?: usersRepos[],
 }
 
 
-export interface fileDictionary {
-    [filePath: string]: {
-        name: string;
-        path: string;
-        type: string;
-    };
-}
-
-export interface Repo {
-    userId: string,
+export interface Order {
     name: string,
-    files: fileDictionary,
+    email: string,
+    images: string[],
+    magicStyle: string,
+    dateCreate: Date,
+    dateFinished: Date | null,
+    status: string,
 }
 
-
-export interface File {
-    name: string,
-    summary: string,
-    path: string,
-    repoId: string,
-    type: string,
-    contentUrl: string,
-    children: string[]
-}

@@ -2,8 +2,7 @@ if (process.env.NODE_ENV !== "production") {
     require('dotenv').config();
 }
 import { Request, NextFunction } from 'express';
-import { ResponseWithUser } from '../types/apiTypes';
-import { User } from '../types/models';
+import { ResponseWithUser, UserWithId } from '../types/apiTypes';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { constants } from '../constants';
 import users from '../models/user';
@@ -23,7 +22,7 @@ async function isLoggedIn(req: Request, res: ResponseWithUser, next: NextFunctio
             //@ts-ignore
             let decoded: JwtPayload = jwt.verify(token, process.env.JWT_PRIVATE_KEY);
 
-            const user: User = await users.findById(decoded._id);
+            const user: UserWithId = await users.findById(decoded._id);
             if (!user) {
                 return res.status(401).send(JSON.stringify("no user found"));
             }
@@ -34,8 +33,8 @@ async function isLoggedIn(req: Request, res: ResponseWithUser, next: NextFunctio
         }
     }
     next();
-    // res.redirect('/login');
 }
+
 
 
 
