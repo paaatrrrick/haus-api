@@ -16,8 +16,6 @@ import users from './models/user';
 import orders from './models/order';
 import { randomStringToHash24Bits, sendEmail } from './methods/helpers';
 import { ResponseWithUser } from './types/apiTypes';
-const { Configuration, OpenAIApi } = require("openai");
-
 
 export default class Api {
     private port: number;
@@ -40,35 +38,11 @@ export default class Api {
             })
         }
 
-        baseRoutes.post('/gpt', async (req, res) => {
-            console.log('calling gpt4');
-            try {
-                const OPENAI_KEY = process.env.OPENAI_KEY;
-                const config = new Configuration({
-                    apiKey: OPENAI_KEY
-                });
-                const openai = new OpenAIApi(config);
-                const { prompt, temperature, max_tokens } = req.body;
-                console.log(req.body);
-                const completion = await openai.createCompletion({
-                    model: "text-davinci-003",
-                    prompt: prompt,
-                    temperature: temperature,
-                    max_tokens: max_tokens,
-                });
-                console.log(completion);
-                const ouput = completion.data.ouput.choices[0].text;
-                return res.status(200).send({ ouput })
-            } catch (e) {
-                console.log(e);
-                return res.status(400).send({ ouput: false });
-            }
-        });
-
         baseRoutes.post('/create-order', catchAsync(async (req: Request, res: Response, next: NextFunction) => {
             const { email, name, photos, magicStyle } = req.body;
             const posterSize = '11x8';
             console.log('we have been hit!');
+            console.log(req.body);
             const newOrder = new orders({ email: email, name: name, magicStyle: magicStyle, images: photos, status: 'pending' });
             await newOrder.save();
             if (!this.testing) {
@@ -78,10 +52,10 @@ export default class Api {
             res.status(200).send({ message: 'Order created' });
         }));
 
-        baseRoutes.get('/', (req: Request, res: Response) => {
-            sendEmail('patrick.123.foster@gmail.com', 'Order Confirmation from haus', emailTemplate.orderComplete('JohnC'), constants.myEmail, process.env.emailPassword);
-            res.send('Welcome to the home of Claribase, we are currently working to get up and running. For any questions please contact patrick.123.foster@gmail.com');
-        });
+        // baseRoutes.get('/', (req: Request, res: Response) => {
+        //     sendEmail('patrick.123.foster@gmail.com', 'Order Confirmation from haus', emailTemplate.orderComplete('JohnC'), constants.myEmail, process.env.emailPassword);
+        //     res.send('Welcome to the home of Claribase, we are currently working to get up and running. For any questions please contact patrick.123.foster@gmail.com');
+        // });
 
         baseRoutes.get('/isLoggedIn', isLoggedIn, catchAsync(async (req: Request, res: ResponseWithUser, next: NextFunction) => {
             res.status(200).send({ user: res.user });
