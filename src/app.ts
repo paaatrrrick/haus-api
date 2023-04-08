@@ -16,6 +16,8 @@ import users from './models/user';
 import orders from './models/order';
 import { randomStringToHash24Bits, sendEmail } from './methods/helpers';
 import { ResponseWithUser } from './types/apiTypes';
+import { Configuration, OpenAIApi } from "openai";
+
 
 export default class Api {
     private port: number;
